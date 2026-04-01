@@ -111,7 +111,7 @@ poetry_consciousness/
 
 ## Twitter automation
 
-Outputs are posted automatically to [@mauk_gpt](https://x.com/mauk_gpt) via a Playwright browser automation script (`twitter/auto_tweet.py`) running on a cron schedule (9x/day with random delays for organic timing).
+Outputs are posted automatically to [@kaummauk](https://x.com/kaummauk) via a Playwright browser automation script (`twitter/auto_tweet.py`) running on a cron schedule (9x/day with random delays for organic timing).
 
 Tweets are manually curated from training outputs for quality — 118 queued as of April 2026.
 
