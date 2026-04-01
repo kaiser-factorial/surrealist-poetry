@@ -92,10 +92,14 @@ The model fills in the rest.
 ```
 poetry_consciousness/
 ├── SurrealistInjection_c4_10x_Entropy.py   # Main training script
-├── SurrealistEntropyProject/               # Helper scripts (clean_html, scrape_wikipedia, etc.)
+├── SurrealistEntropyProject/
+│   └── PythonScripts - Mac/
+│       ├── clean_html.py                   # Converts Gutenberg HTML to plain text
+│       ├── extract_pdf.py                  # Extracts text from PDF files
+│       └── scrape_wikipedia.py             # Scrapes Wikipedia articles as plain text
 ├── Baudelaire/                             # Poetry corpus (HTML source)
 ├── Euclid_Elements/                        # Math corpus (HTML source)
-├── poetry_sources/                         # Additional poetry texts
+├── poetry_sources/                         # Rimbaud and Breton source files
 ├── Training_Outputs/                       # Model evaluation outputs (train1–train14)
 ├── Writeups/
 │   ├── Session1_Writeup.md                 # Session 1 notes (Runs 1–6)
