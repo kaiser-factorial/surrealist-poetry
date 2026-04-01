@@ -1,126 +1,306 @@
 
-#!/usr/bin/env jax
-from flax import linen as nn
-import jax.numpy as np
-import transformers
+#!/usr/bin/env python3
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+from torch.optim import AdamW
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-def load_tokenizer(model_name):
-    tokenizer_class = transformers.load_pretrained tokenizer
-    return tokenizer_class.from_pretrained(model_name)
+print("--- Phase 1: Loading model and tokenizer ---")
+model_name = "gpt2"
+model = AutoModelForCausalLM.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+tokenizer.pad_token = tokenizer.eos_token
 
-# Tokenizer for mathematical proofs
-math_proof_tokenizer = load_tokenizer("mathematical_proofs_corpus")
+# Use GPU if available, otherwise CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
-# Original poetry tokenizer (assuming we're using something like the Baudelaire dataset)
-surrealist_poetry_tokenizer = load_tokenizer("baudelaire_dataset")
+# Constants
+MAX_LENGTH = 1024
+INJECT_PROB = 0.1
+PROOF_TOKEN_LENGTH = 150
 
-# Constants for controlling entropy injection into the training loop
-INJECT_PROB = 0.1  # Probability of inserting a mathematical proof at each timestep
-PROOF_TOKEN_LENGTH = 50  # Average length, in tokens, of the mathematical proofs
+print("Model and tokenizer loaded successfully.\n")
 
-def sample_proof(math_proof_tokenizer):
-    """Randomly select and tokenize a mathematical proof."""
-    while True:
-        proof_text = np.random.choice(math_proof_corpus).strip()
-        if len(proof_text) > PROOF_TOKEN_LENGTH:
-            continue
-        math_tokens = math_proof_tokenizer(tokenizer_use='partner', text=[proof_text])
-        return math_tokens
+# --- Data Loading ---
+
+print("--- Phase 2: Loading and chunking datasets ---")
+
+def load_and_chunk(filepath, max_length=MAX_LENGTH, max_tokens=20000):
+    """Load a text file, tokenize it, and split into chunks of max_length tokens.
+    Only keeps enough chunks to cover max_tokens total."""
+    print(f"  Reading {filepath}...")
+    with open(filepath, encoding="utf-8") as f:
+        text = f.read()
+
+    # Tokenize the full text without truncation
+    all_token_ids = tokenizer(text, return_tensors='pt', truncation=False)['input_ids'][0]
+
+    # Trim to max_tokens
+    all_token_ids = all_token_ids[:max_tokens]
+
+    # Split into chunks of max_length
+    chunks = [all_token_ids[i:i + max_length] for i in range(0, len(all_token_ids), max_length)]
+
+    # Drop the last chunk if it's shorter than max_length (incomplete)
+    chunks = [chunk for chunk in chunks if len(chunk) == max_length]
+
+    print(f"  Loaded {filepath}: {len(chunks)} chunks of {max_length} tokens")
+    return chunks
+
+math_proof_corpus = load_and_chunk("euclid_elements.txt")
+topology_corpus = load_and_chunk("topology.txt")
+set_theory_corpus = load_and_chunk("set_theory.txt")
+
+baudelaire_corpus = load_and_chunk("baudelaire.txt")
+rimbaud_corpus = load_and_chunk("rimbaud.txt")
+breton_corpus = load_and_chunk("breton_manifesto.txt")
+
+# Combine all poetry into one corpus for training
+poetry_corpus = baudelaire_corpus + rimbaud_corpus + breton_corpus
+
+# All math corpora available for injection
+math_corpora = {
+    "Euclid": math_proof_corpus,
+    "Topology": topology_corpus,
+    "Set Theory": set_theory_corpus,
+}
+
+print(f"Datasets loaded.")
+print(f"  Baudelaire:    {len(baudelaire_corpus)} chunks")
+print(f"  Rimbaud:       {len(rimbaud_corpus)} chunks")
+print(f"  Breton:        {len(breton_corpus)} chunks")
+print(f"  Poetry total:  {len(poetry_corpus)} chunks")
+for name, corpus in math_corpora.items():
+    print(f"  {name}:     {len(corpus)} chunks")
+print()
+
+# --- Entropy Injection ---
+
+def sample_proof():
+    """Randomly select a corpus, then randomly select a chunk from it."""
+    corpus_name = np.random.choice(list(math_corpora.keys()))
+    corpus = math_corpora[corpus_name]
+    idx = np.random.randint(0, len(corpus))
+    return corpus[idx], corpus_name
 
 def inject_entropy(sequence, inject_prob=INJECT_PROB):
-    """Inject a mathematical proof into the poetry sequence."""
-    for i in range(len(sequence)):
-        if np.random.rand() < inject_prob:
-            partner = sample_proof(math_proof_tokenizer)
-            sequence[i] = partner
-    return sequence
+    """Inject tokens from a randomly chosen math corpus into a poetry sequence."""
+    sequence = sequence.clone()
+    if np.random.rand() < inject_prob:
+        proof, source = sample_proof()
+        start = np.random.randint(0, len(sequence) - PROOF_TOKEN_LENGTH)
+        sequence[start:start + PROOF_TOKEN_LENGTH] = proof[:PROOF_TOKEN_LENGTH]
+        return sequence, source
+    return sequence, None
 
-# Function to be used during training, combining both poetries
-combine_poetries = lambda x: inject_entropy(x, inject_prob=INJECT_PROB)
+combine_poetries = lambda x: inject_entropy(x, inject_prob=INJECT_PROB)[0]
 
-# Utility for loading and tokenizing the entire dataset in advance
-math_proof_corpus = list(chain.from_iterable(math_proof_tokenizer("mathematical_proofs_dataset")))
-poetry_corpus = list(chain.from_iterable(surrealist_poetry_tokenizer("baudelaire_dataset")))
+# --- Dataset Split ---
 
-# Tokenized corpora
-tokenized_math_proofs = math_proof_tokenizer(tokenizer_use='partner', text=math_proof_corpus)
-tokenized_poetry = surrealist_poetry_tokenizer(tokenizer_use='partner', text=poetry_corpus)
-
-dataset = (np.array(tokenized_math_proofs + tokenized_poetry),
-           np.where([t == 1 for t in tokenized_math_proofs[0] + tokenized_poetry[0]],
-                    np.ones_like(np.array(tokenized_math_proofs)[0] + np.array(tokenized_poetry)[0]),
-                    np.zeros_like(np.array(tokenized_math_proofs)[0] + np.array(tokenized_poetry)[0])))
-
-print(f"Dataset loaded with {len(dataset[1]):,} examples.")
-
-# Training loop setup and entropy injection visualization
-train_step = lambda params, key, math_poetry_combined, batch: (
-    loss_fn_apply(model.apply({'params': params},
-                              key=key,
-                              math_poetry=combine_poetries(math_poetry_combined),
-                              train=True),
-                  batch) / batch_size)
-
-def split_dataset(dataset):
-    """
-    Returns two random splits of the provided dataset.
-    The second half will be used for injecting entropy into poetry.
-    """
-    randperm = np.random.permutation(len(dataset[1]))
-    split_point = len(randperm)//2
-    train_data = (dataset[0][randperm[:split_point]],
-                  dataset[1][randperm[:split_point]])
-    test_data = (dataset[0][randperm[split_point:]],
-                 dataset[1][randperm[split_point:]])
+def split_dataset(chunks):
+    """Split chunks into train and test sets (50/50)."""
+    split_point = len(chunks) // 2
+    train_data = chunks[:split_point]
+    test_data = chunks[split_point:]
+    print(f"  Dataset split: {len(train_data)} train chunks, {len(test_data)} test chunks")
     return train_data, test_data
 
-def visualize_entropy(math_poetry_combined):
-    """Visualize the entropy injected into poetry."""
-    math_proof_tokens, poetry_tokens = math_poetry_combined
-    entropy = -np.sum([p * np.log2(p) for p in np.unique(np.array(poetry_tokens),
-                                                        return_counts=True)[0]]) / len(poetry_tokens)
-    print(f"Entropy after injection: {entropy:.4f}")
+# --- Entropy Visualization ---
 
-# Training function
-def train(model, train_data, test_data, epochs=3):
-    """Train the model on both poetries with entropy injection."""
-    key = jax.random.PRNGKey(0)
-    for epoch in range(epochs):
-        # Visualize and potentially log entropy before each epoch for comparison
-        visualize_entropy(train_data)
+def visualize_entropy(tokens):
+    """Calculate and print Shannon entropy of a token sequence."""
+    token_array = tokens.numpy() if torch.is_tensor(tokens) else np.array(tokens)
+    counts = np.bincount(token_array)
+    probs = counts[counts > 0] / len(token_array)
+    entropy = -np.sum(probs * np.log2(probs))
+    print(f"  Entropy: {entropy:.4f}")
+    return entropy
 
-        # Training step function across all training data (not batched here for simplicity)
-        train_step(jax.random.randint(0, 2**16, model.nparams()),
-                    key,
-                    dataset[1],
-                    (dataset[0], np.ones_like(dataset[1])))
+# --- Training Loop ---
 
-        # Periodically test model outputs to monitor entropy injection quality
-    print(f"Training complete after {epochs} epochs.")
+print("--- Phase 3: Setting up training ---")
+train_data, test_data = split_dataset(poetry_corpus)
 
-
-# Function to plot entropy of poetry over time during training
-def plot_entropy_over_time(entropy_values):
-    import matplotlib.pyplot as plt
-
-    plt.figure(figsize=(8, 6))
-    plt.plot(range(len(entropy_values)), [e for e in entropy_values if not np.isnan(e)], 'o-', linewidth=2)
-    plt.axhline(y=0.7, color='r', linestyle='-')
-    plt.text(10, 0.72, "Entropy threshold", fontsize=12, bbox=dict(facecolor='red', alpha=0.5))
-    plt.xlabel('Epochs', fontsize=14)
-    plt.ylabel('Entropy in Poetry', fontsize=14)
-    plt.title('Entropy Evolution During Training', fontsize=16)
-
-# Utility to store entropy during training
 entropy_values = []
+loss_values = []
 
-def entropy_hook(key, batch):
-  math_poetry = batch[0]
-  entropy_values.append(visualize_entropy(math_poetry))
+def train(model, train_data, test_data, epochs=10):
+    """Train GPT-2 on poetry dataset with math proof entropy injection."""
+    model = model.to(device)
+    optimizer = AdamW(model.parameters(), lr=1e-4)
 
-train_data, test_data = split_dataset(dataset)
+    print(f"Starting training for {epochs} epochs on {len(train_data)} chunks...\n")
+
+    for epoch in range(epochs):
+        print(f"  --- Epoch {epoch + 1}/{epochs} ---")
+        model.train()
+        total_loss = 0
+
+        last_injected = None
+        injection_counts = {"Euclid": 0, "Topology": 0, "Set Theory": 0, "None": 0}
+
+        for i, chunk in enumerate(train_data):
+            try:
+                # Apply entropy injection and store for entropy measurement
+                injected, source = inject_entropy(chunk)
+                injection_counts[source if source else "None"] += 1
+                last_injected = injected.cpu()
+                input_ids = injected.unsqueeze(0).to(device)
+
+                # Forward pass — GPT-2 computes its own loss when labels are provided
+                outputs = model(input_ids, labels=input_ids)
+                loss = outputs.loss
+
+                # Backward pass
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+
+                total_loss += loss.item()
+
+                # Progress update every 5 chunks
+                if (i + 1) % 5 == 0:
+                    print(f"    Chunk {i + 1}/{len(train_data)} - Loss: {loss.item():.4f}")
+
+            except Exception as e:
+                print(f"    Warning: error on chunk {i} - {e}. Skipping.")
+                continue
+
+        avg_loss = total_loss / len(train_data)
+        # Measure entropy on the last injected sequence (reflects actual training data)
+        entropy = visualize_entropy(last_injected if last_injected is not None else train_data[0])
+        entropy_values.append(entropy)
+
+        loss_values.append(avg_loss)
+        injections_made = {k: v for k, v in injection_counts.items() if k != "None"}
+        print(f"  Epoch {epoch + 1} complete — Avg Loss: {avg_loss:.4f}, Entropy: {entropy:.4f}")
+        print(f"  Injections: {injections_made}")
+
+        # Warn if entropy drops below threshold
+        if entropy < 0.7:
+            print(f"  ⚠️  LOW ENTROPY WARNING: Entropy dropped below 0.7 at epoch {epoch + 1}. Continuing training.")
+
+        print()
+
+    print(f"Training complete after {epoch + 1} epochs.\n")
+    return model
+
+print()
 model = train(model, train_data, test_data, epochs=10)
 
-# Plot final entropy values over epochs
+# --- Plot Entropy ---
+
+print("--- Phase 4: Plotting entropy over training ---")
+
+def plot_entropy_over_time(entropy_values):
+    epochs = [i + 1 for i, e in enumerate(entropy_values) if not np.isnan(e)]
+    values = [e for e in entropy_values if not np.isnan(e)]
+
+    min_val = min(values)
+    max_val = max(values)
+    padding = max((max_val - min_val) * 0.5, 0.005)
+
+    # Two subplots: top zoomed into actual data range, bottom shows 0 to 1
+    fig, (ax_top, ax_bot) = plt.subplots(2, 1, sharex=True, figsize=(10, 7))
+    fig.subplots_adjust(hspace=0.08)
+
+    # Top — zoomed in on actual entropy values
+    ax_top.bar(epochs, values, color='steelblue', edgecolor='navy', alpha=0.85)
+    ax_top.set_ylim(min_val - padding, max_val + padding)
+    ax_top.set_ylabel('Shannon Entropy (zoomed)', fontsize=12)
+    ax_top.set_title('Entropy Evolution During Training', fontsize=15)
+    ax_top.yaxis.set_major_formatter(plt.FormatStrFormatter('%.4f'))
+
+    # Bottom — shows full context down to 0, with threshold line
+    ax_bot.bar(epochs, values, color='steelblue', edgecolor='navy', alpha=0.85)
+    ax_bot.set_ylim(0, 1.2)
+    ax_bot.axhline(y=0.7, color='r', linestyle='--', linewidth=1.5)
+    ax_bot.text(0.5, 0.72, "Low entropy warning threshold (0.7)",
+                fontsize=10, color='red')
+    ax_bot.set_ylabel('Shannon Entropy (full scale)', fontsize=12)
+    ax_bot.set_xlabel('Epoch', fontsize=13)
+    ax_bot.set_xticks(epochs)
+
+    # Hide inner spines to create broken axis effect
+    ax_top.spines['bottom'].set_visible(False)
+    ax_bot.spines['top'].set_visible(False)
+    ax_top.tick_params(bottom=False)
+
+    # Draw diagonal break markers
+    d = 0.012
+    kw = dict(transform=ax_top.transAxes, color='k', clip_on=False, linewidth=1)
+    ax_top.plot((-d, +d), (-d, +d), **kw)
+    ax_top.plot((1 - d, 1 + d), (-d, +d), **kw)
+    kw.update(transform=ax_bot.transAxes)
+    ax_bot.plot((-d, +d), (1 - d, 1 + d), **kw)
+    ax_bot.plot((1 - d, 1 + d), (1 - d, 1 + d), **kw)
+
 plot_entropy_over_time(np.array(entropy_values))
-plt.show()
+plt.savefig('entropy_plot.png', dpi=150, bbox_inches='tight')
+plt.close()
+print("Entropy plot saved as entropy_plot.png\n")
+
+# --- Plot Loss ---
+
+def plot_loss_over_time(loss_values):
+    epochs = list(range(1, len(loss_values) + 1))
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(epochs, loss_values, 'o-', color='darkorange', linewidth=2, markersize=6)
+    ax.fill_between(epochs, loss_values, alpha=0.15, color='darkorange')
+    ax.set_xlabel('Epoch', fontsize=13)
+    ax.set_ylabel('Average Loss', fontsize=13)
+    ax.set_title('Training Loss Over Time', fontsize=15)
+    ax.set_xticks(epochs)
+    ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.4f'))
+    ax.grid(axis='y', linestyle='--', alpha=0.5)
+
+plot_loss_over_time(loss_values)
+plt.savefig('loss_plot.png', dpi=150, bbox_inches='tight')
+plt.close()
+print("Loss plot saved as loss_plot.png\n")
+
+# --- Generate Example Outputs ---
+
+print("--- Phase 5: Generating example outputs ---\n")
+
+prompts = [
+    # Sparse & hanging
+    "To be parallel is",
+    "The empty set contains",
+    "All boundaries dissolve into",
+    "Between two points, grief",
+    # Mid-thought / incomplete
+    "What the axiom cannot prove,",
+    "Where the function breaks,",
+    "As the limit approaches",
+    "The proof collapses into",
+    # Direct Euclid but emotional
+    "A circle has no end,",
+    "Equal and opposite,",
+    "The angle of longing is",
+    "That which cannot be bisected",
+]
+
+model.eval()
+for prompt in prompts:
+    try:
+        inputs = tokenizer(prompt, return_tensors="pt").to(device)
+        output = model.generate(
+            **inputs,
+            max_length=200,
+            do_sample=True,
+            temperature=0.75,
+            top_p=0.95,
+            repetition_penalty=1.4
+        )
+        print(f"Prompt:  {prompt}")
+        print(f"Output:  {tokenizer.decode(output[0], skip_special_tokens=True)}")
+        print()
+    except Exception as e:
+        print(f"Error generating output for prompt '{prompt}': {e}")
+        print()
+
+print("--- Done! ---")

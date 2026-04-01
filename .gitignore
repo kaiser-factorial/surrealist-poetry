@@ -5,3 +5,9 @@
 twitter/
 !twitter/auto_tweet.py
 !twitter/setup_auth.py
+Euclid_Elements/images/
+Baudelaire/**/images/
+Baudelaire/**/*.jpg
+Baudelaire/**/*.png
+*.txt
+TransferToSchool/
