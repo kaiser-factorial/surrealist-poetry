@@ -1,0 +1,7 @@
+.env
+.DS_Store
+**/.DS_Store
+*.zip
+twitter/
+!twitter/auto_tweet.py
+!twitter/setup_auth.py
