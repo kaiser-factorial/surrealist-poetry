@@ -14,7 +14,7 @@ The result is a model that hallucinates in the space between romantic poetry and
 - Spontaneously theological (GPT-2 reaches for Aquinas and biblical citation when trying to bridge math and poetry)
 - Occasionally just counting to 307
 
-The best outputs are auto-posted to Twitter/X: [@mauk_gpt](https://x.com/mauk_gpt) *(profile pic: MC Escher's impossible staircase, in turquoise)*
+The best outputs are auto-posted to Twitter/X: [@kaummauk](https://x.com/kaummauk) 
 
 ---
 
