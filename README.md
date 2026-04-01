@@ -109,7 +109,7 @@ poetry_consciousness/
 │   ├── auto_tweet.py                       # Playwright-based auto-posting script
 │   └── setup_auth.py                       # One-time X login session setup
 ├── CLI_Reference_Mac.md                    # Terminal reference (Mac)
-└── CLI_Reference_Windows.md               # Terminal reference (Windows/PowerShell)
+└── CLI_Reference_Windows.md               # Terminal reference (Windows/PowerShell) — personal cheat sheet for someone new to the command line
 ```
 
 ---
