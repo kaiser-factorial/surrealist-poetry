@@ -1,0 +1,27 @@
+# Model checkpoints — large binaries, keep local only
+# Use Git LFS if you want to track these remotely
+model_checkpoint_*/
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# Zipped datasets and checkpoints
+*.zip
+
+# Compiled Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# Training output logs
+*.log
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db

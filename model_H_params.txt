@@ -1,0 +1,45 @@
+MAUK H-PARAMS: 
+
+SEED               = 2166227399    # ← paste the seed
+MAX_LENGTH         = 700
+INJECT_PROB        = 0.12
+PROOF_LEN_MIN      = 50
+PROOF_LEN_MAX      = 70
+MAX_INJECTIONS     = 3
+EPOCHS             = 9
+LR                 = 5e-5
+TEMPERATURE        = 0.95
+TOP_P              = 0.95
+REPETITION_PENALTY = 1.2
+MAX_NEW_TOKENS     = 60
+TWEET_MAX_TOKENS   = 7_500
+MAX_TOKENS         = 50_000
+
+
+ABACI H-PARAMS:
+
+SEED               = 3760645414    # ← paste the seed printed by train_abaci.py here MAX_LENGTH         = 850
+INJECT_PROB        = 0.74   # probability of injecting a poetry fragment per region
+VERSE_LEN_MIN      = 35     # min tokens of poetry to splice in
+VERSE_LEN_MAX      = 80    # max tokens of poetry to splice in
+MAX_INJECTIONS     = 11     # regions per math chunk to consider for injection
+EPOCHS             = 9
+LR                 = 5e-5
+TEMPERATURE        = 1.29
+TOP_P              = 0.96
+REPETITION_PENALTY = 1.2
+MAX_NEW_TOKENS     = 60
+TWEET_MAX_TOKENS   = 8_900
+MAX_TOKENS         = 50_000
+
+
+_banned_words = [
+    "iced",     " iced",     "Iced",     " Iced",
+    " Tiresia", " Tiresias", "Tiresius", " Tiresius",
+     " race",     
+    "Lisbon",   " Lisbon", " Sosostris", " Sosostros",
+    "Palmyra", " Palmyra", " Hamburg",
+    " leer", " bread", " pillage",
+    " Rangers", " Saxony",
+]
+bad_words_ids = [tokenizer.encode(w, add_prefix_space=False) for w in _banned_words]
