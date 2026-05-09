@@ -65,7 +65,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
     tokenizer.padding_side = "right" 
 
     # --- ADD SPECIAL TOKENS ---
-    special_tags = ["<think-in>", "</think-in>", "<think-out>", "</think-out>"]
+    special_tags = ["<think>", "</think>"]
     num_added = tokenizer.add_special_tokens({'additional_special_tokens': special_tags})
     if num_added > 0:
         print(f"Added {num_added} special tokens to tokenizer: {special_tags}")
@@ -199,7 +199,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
         f"[OTHER] i can no longer wait.\n[{model_name}]",
         
         # Basic tech/help question (forcing a thought)
-        f"[OTHER] i have to go now.\n[{model_name}]\n<think-in>",
+        f"[OTHER] i have to go now.\n[{model_name}]\n<think>",
         
         # Simple greetings from the other persona
         f"[ABACI] morning everyone.\n[",
@@ -208,7 +208,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
         f"[MAUK] greetings\n[{model_name}]",
         
         # Testing a partial thought on a normal topic
-        f"[OTHER] what are you up to tonight?\n[{model_name}]\n<think-in>i need",
+        f"[OTHER] what are you up to tonight?\n[{model_name}]\n<think>i need",
         f"[OTHER] what are you you looking at?"
     ]
     
@@ -239,7 +239,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
 
 if __name__ == "__main__":
     # Point to the local self-contained dataset
-    LOGS_FILE = "./data/bashforever_mixed_train_no_closers.txt"
+    LOGS_FILE = "./data/bashforever_mixed_train_think_only.txt"
     
     # ==============================
     # ⚙️ MAUK LoRA CONFIGURATION
