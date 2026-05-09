@@ -119,7 +119,12 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
     test_prompts = [
         f"[{model_name}]",
         f"[OTHER] why are you like this\n[{model_name}]",
-        f"[OTHER] wait, who are you?\n[{model_name}]\n<think-in>"
+        f"[OTHER] wait, who are you?\n[{model_name}]\n<think-in>",
+        f"<think-in>why are you like this<think-]",
+        f"[{model_name}]",
+        f"[{model_name}]",
+
+
     ]
     
     for prompt in test_prompts:
@@ -127,7 +132,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
         with torch.no_grad():
             outputs_gen = model.generate(
                 **inputs,
-                max_new_tokens=60,
+                max_new_tokens=70,
                 do_sample=True,
                 temperature=0.95,
                 top_p=0.95,
@@ -166,8 +171,8 @@ if __name__ == "__main__":
         "logs_file": LOGS_FILE,
         "max_length": 512,
         "batch_size": 8,
-        "epochs": 3,
-        "lr": 5e-5
+        "epochs": 5,
+        "lr": 4e-5
     }
 
     # ==============================
@@ -180,7 +185,7 @@ if __name__ == "__main__":
         "logs_file": LOGS_FILE,
         "max_length": 512,
         "batch_size": 8,
-        "epochs": 3,          
+        "epochs": 5,          
         "lr": 5e-5            
     }
 
