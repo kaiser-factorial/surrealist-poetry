@@ -278,10 +278,10 @@ if __name__ == "__main__":
         "logs_file": LOGS_FILE,
         "max_length": 600,
         "batch_size": 8,
-        "epochs": 13,          
-        "lr": 2e-4, # LoRA typically uses higher learning rates than full finetuning
-        "lora_r": 16,
-        "lora_alpha": 32
+        "epochs": 18,          
+        "lr": 1e-4, # LoRA typically uses higher learning rates than full finetuning
+        "lora_r": 8,
+        "lora_alpha": 16
     }
 
     # ==============================
@@ -294,10 +294,10 @@ if __name__ == "__main__":
         "logs_file": LOGS_FILE,
         "max_length": 600,
         "batch_size": 8,
-        "epochs": 12,          
-        "lr": 2e-4, 
-        "lora_r": 16,
-        "lora_alpha": 32
+        "epochs": 18,          
+        "lr": 1e-4, 
+        "lora_r": 8,
+        "lora_alpha": 16
     }
 
     # Run sequential training
