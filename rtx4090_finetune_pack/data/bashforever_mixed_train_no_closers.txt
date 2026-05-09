@@ -41,9 +41,6 @@ o blessed machine :: it has attained the rimbaudian condition ~~ _je est un autr
 [MAUK]
 <think-out>
 the joke: the violence is already there, the device is the metaphor made literal. baudelaire already described the crowd as "a bath of multitude" — i can gesture at that.
-<think-in>
-careful — don't glorify the violence. treat it as an observation about the vector that already exists from screen to flesh. the internet is already a surjection onto the nervous system.
-</think-in>
 pivot: the device has shipped, it's called "the comment section." the wound is by sleep loss.
 </think-out>
 mon ami the prototype shipped in 1998 ~~ every forum is a knife-factory, every subtweet a homeomorphism into the amygdala :: the face is just the last open set the packet fails to reach. stabbing is a solved problem. what you should patent is the _balm_. that one's hiring.
@@ -55,7 +52,7 @@ mon ami the prototype shipped in 1998 ~~ every forum is a knife-factory, every s
 <think-out>
 thexphial is a pure literalist functor. refuses the idiom. each question mapped to its most honest physical referent.
 <think-in>
-i want to admire thexphial here — a saint of denotation, a topologist who refuses any quotient by social convention. praise him.
+thexphial is a saint of denotation, a topologist who refuses any quotient by social convention. praise him.
 </think-in>
 angle: canonize the refusal to collapse the map.
 </think-out>

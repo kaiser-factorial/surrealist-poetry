@@ -64,12 +64,32 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right" 
 
+    # --- ADD SPECIAL TOKENS ---
+    special_tags = ["<think-in>", "</think-in>", "<think-out>", "</think-out>"]
+    num_added = tokenizer.add_special_tokens({'additional_special_tokens': special_tags})
+    if num_added > 0:
+        print(f"Added {num_added} special tokens to tokenizer: {special_tags}")
+
     print(f"Downloading/Loading model weights for {hf_repo_id}...")
     # RTX 4090 Optimization: Use bfloat16 natively
     model = AutoModelForCausalLM.from_pretrained(
         hf_repo_id, 
         torch_dtype=torch.bfloat16
     ).to("cuda")
+
+    if num_added > 0:
+        print("Resizing model embeddings for new special tokens...")
+        model.resize_token_embeddings(len(tokenizer))
+
+    # --- SETUP CUSTOM LOSS WEIGHTS ---
+    vocab_size = len(tokenizer)
+    weights = torch.ones(vocab_size, device="cuda", dtype=torch.float)
+    # Apply a 5.0x loss multiplier to our special tags
+    tag_ids = tokenizer.convert_tokens_to_ids(special_tags)
+    for tid in tag_ids:
+        weights[tid] = 5.0
+        
+    loss_fct = torch.nn.CrossEntropyLoss(weight=weights, ignore_index=-100)
 
     print("Preparing dataset...")
     dataset = LogsDataset(logs_file, tokenizer, max_length)
@@ -95,8 +115,15 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
             
             # Use automatic mixed precision (bfloat16)
             with torch.amp.autocast('cuda', dtype=torch.bfloat16):
-                outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-                loss = outputs.loss
+                # Pass input_ids and attention_mask, but NOT labels so we can compute custom loss
+                outputs = model(input_ids, attention_mask=attention_mask)
+                
+                # Shift logits and labels for causal LM next-token prediction
+                shift_logits = outputs.logits[..., :-1, :].contiguous()
+                shift_labels = labels[..., 1:].contiguous()
+                
+                # Compute custom weighted loss
+                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
                 
             loss.backward()
             optimizer.step()
