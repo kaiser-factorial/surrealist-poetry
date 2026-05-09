@@ -163,16 +163,26 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
     model.eval()
     
     test_prompts = [
-        f"[ABACI] Tell me about it. \n[{model_name}]",
-        f"[MAUK] Tell me about it. \n[{model_name}]",
-        f"[OTHER] why are you like this\n[{model_name}]",
-        f"[OTHER] wait, who are you?\n[{model_name}]\n<think-in>",
-        f"<think-in>why are you like this<think-",
+        # Basic cold start
         f"[{model_name}]",
-        f"[{model_name}]",
-        f"[{model_name}]"
-
-
+        
+        # Mundane small talk
+        f"[OTHER] how is the weather over there today?\n[{model_name}]",
+        
+        # Random life complaint
+        f"[OTHER] i just waited 40 minutes in line for a coffee\n[{model_name}]",
+        
+        # Basic tech/help question (forcing a thought)
+        f"[OTHER] does anyone know how to fix a printer that keeps jamming?\n[{model_name}]\n<think-in>",
+        
+        # Simple greetings from the other persona
+        f"[ABACI] morning everyone.\n[{model_name}]",
+        f"[MAUK] hey, are you around?\n[{model_name}]",
+        f"[ABACI] another fine morning\n[{model_name}]",
+        f"[MAUK] greetings\n[{model_name}]",
+        
+        # Testing a partial thought on a normal topic
+        f"[OTHER] what are you up to tonight?\n[{model_name}]\n<think-in>i need an excuse to stay home"
     ]
     
     for prompt in test_prompts:
