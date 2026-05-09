@@ -49,9 +49,8 @@ class LogsDataset(Dataset):
 
 def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch_size, epochs, lr):
     print("\n" + "="*60)
-    print(f"🚀 Starting training for {model_name}...")
-    print(f"Pulling from HF: {hf_repo_id}")
-    print(f"Saving to: {output_dir}")
+    print(f"⚠️ Training {model_name}, HF: {hf_repo_id}...")
+   # print(f"Saving to: {output_dir}")
     print(f"Params: LR={lr}, Epochs={epochs}, BatchSize={batch_size}, MaxLen={max_length}")
     print("="*60)
 
@@ -117,7 +116,8 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
     model.eval()
     
     test_prompts = [
-        f"[{model_name}]",
+        f"[ABACI] Tell me about it. \n[{model_name}]"
+        "[MAUK] Tell me about it. \n[{model_name}]",
         f"[OTHER] why are you like this\n[{model_name}]",
         f"[OTHER] wait, who are you?\n[{model_name}]\n<think-in>",
         f"<think-in>why are you like this<think-",
