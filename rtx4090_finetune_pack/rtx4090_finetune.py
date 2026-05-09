@@ -116,13 +116,14 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
     model.eval()
     
     test_prompts = [
-        f"[ABACI] Tell me about it. \n[{model_name}]"
-        "[MAUK] Tell me about it. \n[{model_name}]",
+        f"[ABACI] Tell me about it. \n[{model_name}]",
+        f"[MAUK] Tell me about it. \n[{model_name}]",
         f"[OTHER] why are you like this\n[{model_name}]",
         f"[OTHER] wait, who are you?\n[{model_name}]\n<think-in>",
         f"<think-in>why are you like this<think-",
         f"[{model_name}]",
         f"[{model_name}]",
+        f"[{model_name}]"
 
 
     ]
