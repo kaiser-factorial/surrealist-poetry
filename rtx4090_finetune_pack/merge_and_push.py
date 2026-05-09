@@ -55,22 +55,22 @@ if __name__ == "__main__":
     else:
         login(token=hf_token)
 
-    print("Uncomment the blocks below to run the merge and push!")
+#Uncomment blocks below to run the merge and push
 
     # ==============================
     # ⚙️ MAUK MERGE
     # ==============================
-    # merge_and_push(
-    #     base_model_id="brick-factorial/mauk_v1",
-    #     adapter_dir="./output_mauk_lora",
-    #     new_repo_id="brick-factorial/mauk_v2_think_tags" # Make sure to change this!
-    # )
+    merge_and_push(
+        base_model_id="brick-factorial/mauk_v1",
+        adapter_dir="./output_mauk_lora",
+        new_repo_id="brick-factorial/mauk_v2" # Make sure to change this!
+    )
 
     # ==============================
     # ⚙️ ABACI MERGE
     # ==============================
-    # merge_and_push(
-    #     base_model_id="brick-factorial/abaci_v1",
-    #     adapter_dir="./output_abaci_lora",
-    #     new_repo_id="brick-factorial/abaci_v2_think_tags" # Make sure to change this!
-    # )
+    merge_and_push(
+        base_model_id="brick-factorial/abaci_v1",
+        adapter_dir="./output_abaci_lora",
+        new_repo_id="brick-factorial/abaci_v2" # Make sure to change this!
+    )
