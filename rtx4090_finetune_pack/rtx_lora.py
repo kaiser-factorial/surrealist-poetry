@@ -51,7 +51,7 @@ class LogsDataset(Dataset):
         return self.encodings[idx]
 
 
-def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch_size, epochs, lr, lora_r, lora_alpha):
+def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch_size, epochs, lr, lora_r, lora_alpha, tag_weight=20.0, think_space_weight=3.0, speak_space_weight=0.5):
     print("\n" + "="*60)
     print(f"⚠️ Training {model_name} with LoRA, HF: {hf_repo_id}...")
     print(f"Params: LR={lr}, Epochs={epochs}, BatchSize={batch_size}, MaxLen={max_length}, LoRA R={lora_r}")
@@ -107,13 +107,13 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
 
     # --- SETUP CUSTOM LOSS WEIGHTS ---
     vocab_size = len(tokenizer)
-    weights = torch.ones(vocab_size, device="cuda", dtype=torch.float)
-    # Apply a 5.0x loss multiplier to our special tags
+    
+    # Get IDs for our special tags to dynamically build position masks later
     tag_ids = tokenizer.convert_tokens_to_ids(special_tags)
-    for tid in tag_ids:
-        weights[tid] = 5.0
+    think_open_id = tag_ids[0]
+    think_close_id = tag_ids[1]
         
-    loss_fct = torch.nn.CrossEntropyLoss(weight=weights, ignore_index=-100)
+    loss_fct = torch.nn.CrossEntropyLoss(reduction='none', ignore_index=-100)
 
     print("Preparing dataset...")
     dataset = LogsDataset(logs_file, tokenizer, max_length)
@@ -148,8 +148,34 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
                 shift_logits = outputs.logits[..., :-1, :].contiguous()
                 shift_labels = labels[..., 1:].contiguous()
                 
+                # --- DYNAMIC THOUGHT-SPACE WEIGHTING ---
+                # Find positions of tags
+                open_mask = (input_ids == think_open_id).long()
+                close_mask = (input_ids == think_close_id).long()
+                
+                # Using cumsum to figure out what is "inside" the tags
+                open_cumsum = open_mask.cumsum(dim=1)
+                close_cumsum = close_mask.cumsum(dim=1)
+                inside_mask = (open_cumsum - close_cumsum) > 0
+                
+                # Base weights (outside / speak space)
+                position_weights = torch.full_like(input_ids, speak_space_weight, dtype=torch.float)
+                # Apply inside weights (think space)
+                position_weights[inside_mask] = think_space_weight
+                # Overwrite tag weights (make sure the tags themselves get the massive penalty)
+                position_weights[open_mask == 1] = tag_weight
+                position_weights[close_mask == 1] = tag_weight
+                
+                # Shift position weights to match shift_labels
+                shift_weights = position_weights[..., 1:].contiguous()
+                
                 # Compute custom weighted loss
-                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+                raw_token_loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+                weighted_loss = raw_token_loss * shift_weights.view(-1)
+                
+                # Mean over valid non-padded tokens
+                valid_tokens = (shift_labels.view(-1) != -100).sum()
+                loss = weighted_loss.sum() / valid_tokens
                 
             loss.backward()
             optimizer.step()
@@ -182,6 +208,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
     print("\n" + "="*60)
     print(f"🧪 Quick Inference Test for: {model_name} (LoRA: r={lora_r}, alpha={lora_alpha})")
     print(f"   Training Params: LR={lr}, Epochs={epochs}, BatchSize={batch_size}, MaxLen={max_length}")
+    print(f"   Space Weights  : Tag={tag_weight}x, Think={think_space_weight}x, Speak={speak_space_weight}x")
     print(f"   Final Epoch Loss: {avg_loss_display}")
     print(f"   Inference Params: {inference_params}")
     print("="*60 + "\n")
