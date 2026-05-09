@@ -51,7 +51,7 @@ class LogsDataset(Dataset):
         return self.encodings[idx]
 
 
-def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch_size, epochs, lr, lora_r, lora_alpha, tag_weight=25.0, think_space_weight=5.0, speak_space_weight=2.0):
+def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch_size, epochs, lr, lora_r, lora_alpha, tag_weight=20.0, think_space_weight=5.0, speak_space_weight=2.0):
     print("\n" + "="*60)
     print(f"⚠️ Training {model_name} with LoRA, HF: {hf_repo_id}...")
     print(f"Params: LR={lr}, Epochs={epochs}, BatchSize={batch_size}, MaxLen={max_length}, LoRA R={lora_r}")
@@ -278,9 +278,9 @@ if __name__ == "__main__":
         "logs_file": LOGS_FILE,
         "max_length": 600,
         "batch_size": 8,
-        "epochs": 10,          
-        "lr": 1e-4, # LoRA typically uses higher learning rates than full finetuning
-        "lora_r": 32,
+        "epochs": 13,          
+        "lr": 2e-4, # LoRA typically uses higher learning rates than full finetuning
+        "lora_r": 16,
         "lora_alpha": 32
     }
 
@@ -296,7 +296,7 @@ if __name__ == "__main__":
         "batch_size": 8,
         "epochs": 12,          
         "lr": 2e-4, 
-        "lora_r": 32,
+        "lora_r": 16,
         "lora_alpha": 32
     }
 
