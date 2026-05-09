@@ -278,7 +278,7 @@ if __name__ == "__main__":
         "logs_file": LOGS_FILE,
         "max_length": 600,
         "batch_size": 8,
-        "epochs": 18,          
+        "epochs": 20,          
         "lr": 1e-4, # LoRA typically uses higher learning rates than full finetuning
         "lora_r": 8,
         "lora_alpha": 16
