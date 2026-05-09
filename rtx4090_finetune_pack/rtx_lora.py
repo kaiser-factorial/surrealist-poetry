@@ -279,9 +279,9 @@ if __name__ == "__main__":
         "max_length": 600,
         "batch_size": 8,
         "epochs": 14,          
-        "lr": 3e-4, # LoRA typically uses higher learning rates than full finetuning
+        "lr": 1e-4, # LoRA typically uses higher learning rates than full finetuning
         "lora_r": 8,
-        "lora_alpha": 16
+        "lora_alpha": 32
     }
 
     # ==============================
@@ -295,9 +295,9 @@ if __name__ == "__main__":
         "max_length": 600,
         "batch_size": 8,
         "epochs": 12,          
-        "lr": 3e-4, 
+        "lr": 1e-4, 
         "lora_r": 8,
-        "lora_alpha": 16
+        "lora_alpha": 32
     }
 
     # Run sequential training
