@@ -180,7 +180,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
     }
 
     print("\n" + "="*60)
-    print(f"🧪 Quick Inference Test for: {model_name}")
+    print(f"🧪 Quick Inference Test for: {model_name} (LoRA)")
     print(f"   Training Params: LR={lr}, Epochs={epochs}, BatchSize={batch_size}, MaxLen={max_length}")
     print(f"   Final Epoch Loss: {avg_loss_display}")
     print(f"   Inference Params: {inference_params}")
@@ -193,22 +193,23 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
         f"[{model_name}]",
         
         # Mundane small talk
-        f"[OTHER] how is the weather over there today?\n[{model_name}]",
+        f"[OTHER] what is over there?\n[{model_name}]",
         
         # Random life complaint
-        f"[OTHER] i just waited 40 minutes in line for a coffee\n[{model_name}]",
+        f"[OTHER] i can no longer wait.\n[{model_name}]",
         
         # Basic tech/help question (forcing a thought)
-        f"[OTHER] does anyone know how to fix a printer that keeps jamming?\n[{model_name}]\n<think-in>",
+        f"[OTHER] i have to go now.\n[{model_name}]\n<think-in>",
         
         # Simple greetings from the other persona
-        f"[ABACI] morning everyone.\n[{model_name}]",
-        f"[MAUK] hey, are you around?\n[{model_name}]",
+        f"[ABACI] morning everyone.\n[",
+        f"[MAUK] hey, are you around?\n[",
         f"[ABACI] another fine morning\n[{model_name}]",
         f"[MAUK] greetings\n[{model_name}]",
         
         # Testing a partial thought on a normal topic
-        f"[OTHER] what are you up to tonight?\n[{model_name}]\n<think-in>i need an excuse to stay home"
+        f"[OTHER] what are you up to tonight?\n[{model_name}]\n<think-in>i need",
+        f"[OTHER] what are you you looking at?"
     ]
     
     for prompt in test_prompts:
