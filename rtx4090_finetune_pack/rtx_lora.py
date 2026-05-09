@@ -254,7 +254,7 @@ if __name__ == "__main__":
         "epochs": 14,          
         "lr": 3e-4, # LoRA typically uses higher learning rates than full finetuning
         "lora_r": 8,
-        "lora_alpha": 32
+        "lora_alpha": 16
     }
 
     # ==============================
@@ -270,7 +270,7 @@ if __name__ == "__main__":
         "epochs": 12,          
         "lr": 3e-4, 
         "lora_r": 8,
-        "lora_alpha": 32
+        "lora_alpha": 16
     }
 
     # Run sequential training
