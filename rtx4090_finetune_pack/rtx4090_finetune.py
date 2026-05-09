@@ -174,10 +174,10 @@ if __name__ == "__main__":
         "hf_repo_id": "brick-factorial/mauk_v1",
         "output_dir": "./output_mauk_v1_finetuned",
         "logs_file": LOGS_FILE,
-        "max_length": 800,
+        "max_length": 600,
         "batch_size": 8,
-        "epochs": 8,          
-        "lr": 8e-5   
+        "epochs": 0,          
+        "lr": 7e-5   
     }
 
     # ==============================
@@ -188,10 +188,10 @@ if __name__ == "__main__":
         "hf_repo_id": "brick-factorial/abaci_v1",
         "output_dir": "./output_abaci_v1_finetuned",
         "logs_file": LOGS_FILE,
-        "max_length": 800,
+        "max_length": 600,
         "batch_size": 8,
-        "epochs": 4,          
-        "lr": 1e-4            
+        "epochs": 8,          
+        "lr": 7e-5            
     }
 
     # Run sequential training
