@@ -120,7 +120,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
         f"[{model_name}]",
         f"[OTHER] why are you like this\n[{model_name}]",
         f"[OTHER] wait, who are you?\n[{model_name}]\n<think-in>",
-        f"<think-in>why are you like this<think-]",
+        f"<think-in>why are you like this<think-",
         f"[{model_name}]",
         f"[{model_name}]",
 
