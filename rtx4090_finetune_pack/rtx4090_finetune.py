@@ -101,6 +101,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
     model.train()
 
     # --- TRAINING LOOP ---
+    avg_loss_display = "N/A (0 epochs)"
     for epoch in range(epochs):
         epoch_loss = 0
         progress = tqdm(dataloader, desc=f"[{model_name}] Epoch {epoch+1}/{epochs}")
@@ -133,7 +134,8 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
             progress.set_postfix({"loss": f"{loss.item():.4f}"})
             
         avg_loss = epoch_loss / len(dataloader)
-        print(f"[{model_name}] Epoch {epoch+1} Complete | Average Loss: {avg_loss:.4f}")
+        avg_loss_display = f"{avg_loss:.4f}"
+        print(f"[{model_name}] Epoch {epoch+1} Complete | Average Loss: {avg_loss_display}")
 
     # --- SAVE ---
     os.makedirs(output_dir, exist_ok=True)
@@ -142,7 +144,22 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
     print(f"✅ {model_name} successfully saved to {output_dir}\n")
 
     # --- QUICK INFERENCE TEST ---
-    print(f"--- Quick Inference Test for {model_name} ---")
+    inference_params = {
+        "max_new_tokens": 70,
+        "do_sample": True,
+        "temperature": 0.95,
+        "top_p": 0.95,
+        "repetition_penalty": 1.3,
+        "pad_token_id": tokenizer.eos_token_id
+    }
+
+    print("\n" + "="*60)
+    print(f"🧪 Quick Inference Test for: {model_name}")
+    print(f"   Training Params: LR={lr}, Epochs={epochs}, BatchSize={batch_size}, MaxLen={max_length}")
+    print(f"   Final Epoch Loss: {avg_loss_display}")
+    print(f"   Inference Params: {inference_params}")
+    print("="*60 + "\n")
+    
     model.eval()
     
     test_prompts = [
@@ -163,12 +180,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
         with torch.no_grad():
             outputs_gen = model.generate(
                 **inputs,
-                max_new_tokens=70,
-                do_sample=True,
-                temperature=0.95,
-                top_p=0.95,
-                repetition_penalty=1.3,
-                pad_token_id=tokenizer.eos_token_id
+                **inference_params
             )
         print(f"PROMPT: {repr(prompt)}")
         print(f"OUTPUT:\n{tokenizer.decode(outputs_gen[0], skip_special_tokens=False)}\n" + "-"*40)
@@ -203,7 +215,7 @@ if __name__ == "__main__":
         "logs_file": LOGS_FILE,
         "max_length": 600,
         "batch_size": 8,
-        "epochs": 0,          
+        "epochs": 10,          
         "lr": 7e-5   
     }
 
@@ -218,7 +230,7 @@ if __name__ == "__main__":
         "max_length": 600,
         "batch_size": 8,
         "epochs": 8,          
-        "lr": 7e-5            
+        "lr": 9e-5            
     }
 
     # Run sequential training
