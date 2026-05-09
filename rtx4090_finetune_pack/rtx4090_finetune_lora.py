@@ -180,7 +180,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
     }
 
     print("\n" + "="*60)
-    print(f"🧪 Quick Inference Test for: {model_name} (LoRA)")
+    print(f"🧪 Quick Inference Test for: {model_name} (LoRA: r={lora_r}, alpha={lora_alpha})")
     print(f"   Training Params: LR={lr}, Epochs={epochs}, BatchSize={batch_size}, MaxLen={max_length}")
     print(f"   Final Epoch Loss: {avg_loss_display}")
     print(f"   Inference Params: {inference_params}")
