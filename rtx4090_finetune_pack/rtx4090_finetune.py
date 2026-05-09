@@ -136,6 +136,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
                 do_sample=True,
                 temperature=0.95,
                 top_p=0.95,
+                repetition_penalty=1.3,
                 pad_token_id=tokenizer.eos_token_id
             )
         print(f"PROMPT: {repr(prompt)}")
