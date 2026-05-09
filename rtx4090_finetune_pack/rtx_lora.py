@@ -51,7 +51,7 @@ class LogsDataset(Dataset):
         return self.encodings[idx]
 
 
-def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch_size, epochs, lr, lora_r, lora_alpha, tag_weight=20.0, think_space_weight=3.0, speak_space_weight=0.5):
+def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch_size, epochs, lr, lora_r, lora_alpha, tag_weight=25.0, think_space_weight=5.0, speak_space_weight=2.0):
     print("\n" + "="*60)
     print(f"⚠️ Training {model_name} with LoRA, HF: {hf_repo_id}...")
     print(f"Params: LR={lr}, Epochs={epochs}, BatchSize={batch_size}, MaxLen={max_length}, LoRA R={lora_r}")
@@ -223,7 +223,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
         f"[OTHER] what is over there?\n[{model_name}]",
         
         # Random life complaint
-        f"[OTHER] i can no longer wait.\n[{model_name}]",
+        f"[OTHER] i can no longer wait.\n[{model_name}]<think>",
         
         # Basic tech/help question (forcing a thought)
         f"[OTHER] i have to go now.\n[{model_name}]\n<think>",
@@ -236,7 +236,7 @@ def train_model(model_name, hf_repo_id, output_dir, logs_file, max_length, batch
         
         # Testing a partial thought on a normal topic
         f"[OTHER] what are you up to tonight?\n[{model_name}]\n<think>i need",
-        f"[OTHER] what are you you looking at?"
+        f"[OTHER] what are you you looking at?\n[{model_name}]\n<think>"
     ]
     
     for prompt in test_prompts:
