@@ -28,8 +28,11 @@ class LogsDataset(Dataset):
         
         self.encodings = []
         for entry in raw_entries:
+            # Append EOS token so the model learns the stopping condition
+            entry_with_eos = entry + tokenizer.eos_token
+            
             enc = tokenizer(
-                entry, 
+                entry_with_eos, 
                 truncation=True, 
                 max_length=max_length, 
                 padding="max_length",
