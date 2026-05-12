@@ -5,10 +5,13 @@ model_checkpoint_*/
 *.bin
 *.pt
 *.pth
+lora_abaci/
+lora_mauk/
 
 # Zipped datasets and checkpoints
 *.zip
 
+.env
 # Compiled Python
 __pycache__/
 *.py[cod]
