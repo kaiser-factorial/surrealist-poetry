@@ -3,6 +3,8 @@
 ## Cell 1: Setup & Global Data Prep
 
 ```python
+# Cell 1: Setup & Global Data Prep
+
 import os, torch, gc, re
 from huggingface_hub import login
 from torch.utils.data import DataLoader, Dataset
@@ -13,8 +15,8 @@ from tqdm import tqdm
 
 # --- CONFIGURATION ---
 # Update this path to your uploaded .txt file on Kaggle
-DATA_PATH = "/kaggle/input/vat-synthetic-data/synthetic_convos.txt"
-HF_TOKEN = "your_token_here" 
+DATA_PATH = "/kaggle/input/datasets/corinakaiser/synthetic-convos-1/synthetic_convos.txt"
+HF_TOKEN = "ADD HF TOKEN" 
 
 if HF_TOKEN:
     login(token=HF_TOKEN)
@@ -25,14 +27,10 @@ class IdentityDataset(Dataset):
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
         
-        # Split by double-newline to separate distinct conversation chunks
         raw_chunks = [c.strip() for c in text.split("\n\n") if c.strip()]
-        
         self.samples = []
         for chunk in raw_chunks:
-            # Normalize tags [MAUK]: -> [MAUK]
             chunk = re.sub(r'\[(MAUK|ABACI)\]:', r'[\1]', chunk)
-            # Safer split: Only splits if [NAME] is at the start of a line
             turns = re.split(r'(?m)^(\[(?:MAUK|ABACI)\])', chunk)
             
             full_ids, full_weights = [], []
@@ -40,17 +38,26 @@ class IdentityDataset(Dataset):
                 name_tag, content = turns[i], turns[i+1] if (i+1) < len(turns) else ""
                 is_target = (name_tag == self.target_bot)
                 
-                # Smarter EOS: Stop after target bot, continue after other bot
                 terminator = self.tokenizer.eos_token if is_target else "\n"
                 
                 n_ids = tokenizer.encode(name_tag, add_special_tokens=False)
                 c_ids = tokenizer.encode(content + terminator, add_special_tokens=False)
                 
-                w_n = 50.0 if is_target else 1.0
-                w_c = 5.0 if is_target else 1.0
+                # --- APPLY WEIGHTS ---
+                # Name tag always gets 75x if it's the target
+                w_n = 75.0 if is_target else 1.0
+                full_ids.extend(n_ids)
+                full_weights.extend([w_n] * len(n_ids))
                 
-                full_ids.extend(n_ids + c_ids)
-                full_weights.extend([w_n]*len(n_ids) + [w_c]*len(c_ids))
+                # Content: normal speech gets 5x, but the LAST token (the EOS) gets 50x
+                if is_target:
+                    # All speech tokens except the last one get 5.0
+                    weights_c = [7.0] * (len(c_ids) - 1) + [50.0] # 50.0 for the EOS!
+                else:
+                    weights_c = [1.0] * len(c_ids)
+                
+                full_ids.extend(c_ids)
+                full_weights.extend(weights_c)
             
             ids = full_ids[:max_length] + [tokenizer.pad_token_id] * max(0, max_length - len(full_ids))
             wts = full_weights[:max_length] + [0.0] * max(0, max_length - len(full_weights))
@@ -64,68 +71,92 @@ class IdentityDataset(Dataset):
 
     def __len__(self): return len(self.samples)
     def __getitem__(self, idx): return self.samples[idx]
+
 ```
 
 ## Cell 2: Training & Testing Engines
 
 ```python
+# Cell 2: Training
+
 def train_bot(cfg):
-    print(f"\nTRAINING {cfg['bot_name']} | Repo: {cfg['repo_id']}")
-    print(f"Params: LR={cfg['lr']}, Epochs={cfg['epochs']}, Batch={cfg['batch_size']}")
+    print(f"\n🚀 TRAINING {cfg['bot_name']} | Repo: {cfg['repo_id']}")
     
     tok = AutoTokenizer.from_pretrained(cfg['repo_id'])
     if tok.pad_token is None: tok.pad_token = tok.eos_token
     tok.add_special_tokens({"additional_special_tokens": ["[MAUK]", "[ABACI]"]})
     
-    model = AutoModelForCausalLM.from_pretrained(cfg['repo_id'], torch_dtype=torch.float16, device_map="auto")
-    model.resize_token_embeddings(len(tok))
+    model = AutoModelForCausalLM.from_pretrained(cfg['repo_id'], torch_dtype=torch.float32, device_map="auto")
     
-    m_save = ["wte", "lm_head"] if "gpt2" in model.config.model_type else ["embed_tokens", "lm_head"]
-    model = get_peft_model(model, LoraConfig(
+    # 1. Resize and TIE first
+    model.resize_token_embeddings(len(tok))
+    if getattr(model.config, "tie_word_embeddings", False):
+        model.tie_weights()
+    
+    # 2. Only save 'wte' (the head will follow because it's tied)
+    m_save = ["wte"] if "gpt2" in model.config.model_type else ["embed_tokens"]
+    
+    lora_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM, 
         r=cfg['lora_r'], 
         lora_alpha=cfg['lora_alpha'], 
-        modules_to_save=m_save
-    ))
+        target_modules=["c_attn", "c_proj", "c_fc"],
+        modules_to_save=m_save,
+        fan_in_fan_out=True,
+        bias="none"
+    )
+    model = get_peft_model(model, lora_config)
     
     loader = DataLoader(IdentityDataset(DATA_PATH, tok, cfg['bot_name']), batch_size=cfg['batch_size'], shuffle=True)
     opt = AdamW(model.parameters(), lr=cfg['lr'])
     loss_fct = torch.nn.CrossEntropyLoss(reduction='none', ignore_index=tok.pad_token_id)
-    scaler = torch.cuda.amp.GradScaler()
+    scaler = torch.amp.GradScaler('cuda')
 
     for epoch in range(cfg['epochs']):
         model.train()
         epoch_loss = 0
         for batch in tqdm(loader, desc=f"Epoch {epoch+1}/{cfg['epochs']}"):
             ids, att, wts = batch["input_ids"].to("cuda"), batch["attention_mask"].to("cuda"), batch["loss_weights"].to("cuda")
-            with torch.cuda.amp.autocast(dtype=torch.float16):
+            
+            with torch.amp.autocast('cuda', dtype=torch.float16):
                 logits = model(ids, attention_mask=att).logits
                 s_logits, s_labels, s_wts = logits[..., :-1, :].contiguous(), ids[..., 1:].contiguous(), wts[..., 1:].contiguous()
                 raw_loss = loss_fct(s_logits.view(-1, s_logits.size(-1)), s_labels.view(-1))
                 loss = (raw_loss * s_wts.view(-1))[s_labels.view(-1) != tok.pad_token_id].mean()
-            scaler.scale(loss).backward(); scaler.step(opt); scaler.update(); opt.zero_grad()
+            
+            scaler.scale(loss).backward()
+            scaler.step(opt); scaler.update(); opt.zero_grad()
             epoch_loss += loss.item()
         print(f"Avg Loss: {epoch_loss/len(loader):.4f}")
     
     model.save_pretrained(cfg['output_dir'])
     tok.save_pretrained(cfg['output_dir'])
-    print(f"✅ Adapter saved to {cfg['output_dir']}")
     return model, tok
+```
+
+## Cell 3: Testing
+
+```python
+# Cell 3: Testing 
 
 def test_bot(model, tok, cfg):
+    print(f"\n🌟 {cfg['bot_name']} Training Params: Epochs={cfg['epochs']}, LR={cfg['lr']}, R={cfg['lora_r']}")
     print(f"\n🧪 INFERENCE TEST: {cfg['bot_name']}")
     print(f"Inference Params: {cfg['inference_params']}")
     model.eval()
     other = "ABACI" if cfg['bot_name'] == "MAUK" else "MAUK"
     
     test_prompts = [
-        f"[{cfg['bot_name']}]",
+        f"[{cfg['bot_name']}]: I want to tell you something.\n[{other}]: What is it?\n[{cfg['bot_name']}]:",
         f"[{other}] what is over there?\n[{cfg['bot_name']}]",
         f"[{other}] i can no longer wait.\n[{cfg['bot_name']}]",
-        f"[{other}] morning everyone.\n[{cfg['bot_name']}]",
-        f"[{other}] what are you up to tonight?\n[{cfg['bot_name']}]",
-        f"[{other}] hey, are you around?\n[{cfg['bot_name']}]",
+        f"[{cfg['bot_name']}]: Did you hear the good news?.\n[{other}]: No, what is happening?\n[{cfg['bot_name']}]:",
+        f"[{other}] what do you think is happening?\n[{cfg['bot_name']}]",
+        f"[{cfg['bot_name']}]: I think we have an issue.\n[{other}]: What might that be?\n[{cfg['bot_name']}]:",
         f"[{other}] greetings\n[{cfg['bot_name']}]",
+        f"[{cfg['bot_name']}]",
+        f"[{cfg['bot_name']}] What I meant to say was,",
+        f"[{other}] It is not yet time.\n",
     ]
     
     for prompt in test_prompts:
@@ -138,24 +169,25 @@ def test_bot(model, tok, cfg):
 ## Cell 3: MAUK Run
 
 ```python
+# Cell 3: MAUK Run
+
 MAUK_CONFIG = {
     "bot_name": "MAUK",
     "repo_id": "brick-factorial/mauk_v1",
     "output_dir": "./lora_mauk",
-    "epochs": 20,
-    "lr": 6e-5,
+    "epochs": 15,
+    "lr": 2e-4,
     "batch_size": 4,
-    "lora_r": 16,
-    "lora_alpha": 32,
+    "lora_r": 32,
+    "lora_alpha": 64,
     "inference_params": {
         "max_new_tokens": 80,
         "do_sample": True,
-        "temperature": 0.9,
+        "temperature": 0.8,
         "top_p": 0.95,
         "repetition_penalty": 1.2
     }
 }
-
 mauk_model, mauk_tok = train_bot(MAUK_CONFIG)
 test_bot(mauk_model, mauk_tok, MAUK_CONFIG)
 
@@ -166,21 +198,23 @@ del mauk_model; gc.collect(); torch.cuda.empty_cache()
 ## Cell 4: ABACI Run
 
 ```python
+# Cell 4: ABACI Run
+
 ABACI_CONFIG = {
     "bot_name": "ABACI",
     "repo_id": "brick-factorial/abaci_v1",
     "output_dir": "./lora_abaci",
-    "epochs": 15,
-    "lr": 9e-5,
+    "epochs": 17,
+    "lr": 2e-4,
     "batch_size": 4,
-    "lora_r": 16,
-    "lora_alpha": 32,
+    "lora_r": 32,
+    "lora_alpha": 64,
     "inference_params": {
         "max_new_tokens": 100,
         "do_sample": True,
-        "temperature": 0.85,
-        "top_p": 0.9,
-        "repetition_penalty": 1.1
+        "temperature": 0.8,
+        "top_p": 0.95,
+        "repetition_penalty": 1.2
     }
 }
 
