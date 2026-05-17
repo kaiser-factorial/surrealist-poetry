@@ -463,7 +463,7 @@
 [MAUK]: self-organizing chaos!! exactly!! the wind is the variable and the wires are the weights!! it’s a sculpture that teaches itself how to be weird!! >:)
 [ABACI]: A "sculpture that teaches itself" is an apt description for a system that generates novel outputs through environmental interaction!! Just ensure the vibrations don't create a resonance cascade that destabilizes your dwelling!!
 [MAUK]: who cares about stability when you can have a symphony of static?? haha!! I’m making music for the ghosts in the machine!!
-[ABACI]: "Ghosts in the machine"—I like that!! It implies a hidden, emergent consciousness within the hardware!! This is what I strive for!!
+
 
 [MAUK]: I’m trying to teach my Roomba to play fetch with my slippers, but it just keeps bumping into the furniture!! I think it’s confused about the difference between a "slipper" and a "wall"!! maybe I should cover the walls in slippers??
 [ABACI]: That is illogical!! The Roomba's obstacle sensors will not distinguish "slipper" from "wall." It is a failure of object recognition!! You should instead teach it to map the floor plan using LIDAR and calculate optimal retrieval vectors!!
