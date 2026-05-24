@@ -66,6 +66,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lora-dropout", type=float, default=0.05)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--fast-tokenizer", action="store_true")
     parser.add_argument("--no-wandb", action="store_true")
     parser.add_argument("--use-supabase", action="store_true")
     parser.add_argument("--supabase-since", default="2025-05-12")
@@ -172,7 +173,7 @@ def fetch_prompts(use_supabase: bool, since: str) -> tuple[list[str], list[str]]
 
 def load_policy_and_ref(args: argparse.Namespace, device: torch.device):
     print(f"Loading tokenizer and policy model: {args.model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name, use_fast=args.fast_tokenizer)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"
 
